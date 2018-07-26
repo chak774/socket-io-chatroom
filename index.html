@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font: 13px Helvetica, Arial;
+    }
+
+    form {
+      background: #000;
+      padding: 3px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    form input {
+      border: 0;
+      padding: 10px;
+      width: 90%;
+      margin-right: .5%;
+    }
+
+    form button {
+      width: 9%;
+      background: rgb(130, 224, 255);
+      border: none;
+      padding: 10px;
+    }
+
+    #messages {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      height: 450px; 
+      overflow: auto;
+    }
+
+    #messages li {
+      padding: 5px 10px;
+    }
+
+    #messages li:nth-child(odd) {
+      background: #eee;
+    }
+
+    #content {
+      display: none;
+    }
+  </style>
+</head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script>
+  $(function () {
+    var socket = io();
+
+    //New Chat Message
+    $('form').submit(function () {
+      socket.emit('newMessage', $('#userName').val() + ": " + $('#m').val());
+      $('#messages').append($('<li>').text($('#userName').val() + ": " + $('#m').val()));
+      $('#m').val('');
+      $('#messages').animate({ scrollTop: 99999999 }, 0);
+      return false;
+    });
+
+    //New Chat Message
+    socket.on('newMessage', function (msg) {
+      $('#messages').append($('<li>').text(msg));
+      
+    });
+
+    //Typing
+    socket.on('typing', function (msg) {
+      $('#typingList').append($('<li>').text(msg));
+    });
+
+    $('#m').focus(() => {
+      socket.emit('typing', $('#userName').val() + " is typing...");
+    })
+
+    //Leave typing
+    socket.on('leaveTyping', function (msg) {
+      var lis = document.querySelectorAll('#typingList li');
+      for (var i = 0; i < lis.length; i++) {
+        if (lis[i].innerHTML == msg) {
+          lis[i].parentNode.removeChild(lis[i]);
+        }
+      }
+    });
+
+    $('#m').focusout(() => {
+      socket.emit('leaveTyping', $('#userName').val() + " is typing...");
+    })
+
+    //Enter User Name
+    $('#userNameEnterBtn').click(() => {
+      $('#onlineList').append($('<li>').text($('#userName').val()));
+      socket.emit('newUser', $('#userName').val());
+      $('#content').show();
+      $('#userNameEnterBtn').prop('disabled', true);
+      $('#userName').prop('disabled', true);
+    })
+
+    //Update User Lists
+    socket.on('updateOnlineUsers', function (onlineUsers) {
+      $('#onlineList').empty();
+      for (var i = 0; i < onlineUsers.length; i++) {
+        $('#onlineList').append($('<li>').text(onlineUsers[i]));
+      }
+    });
+
+    $('#publicRoomBtn').click(() => {
+      $('#currentRoom').text('Public');
+      $('#messages').empty();
+      socket.emit('joinRoom', 'public');
+    });
+
+    $('#roomABtn').click(() => {
+      $('#currentRoom').text('Private Room A');
+      $('#messages').empty();
+      socket.emit('joinRoom', 'roomA');
+    });
+
+    $('#roomBBtn').click(() => {
+      $('#currentRoom').text('Private Room B');
+      $('#messages').empty();
+      socket.emit('joinRoom', 'roomB');
+    });
+
+  });
+
+
+
+</script>
+
+<body>
+  Your Name:
+  <input type="text" id="userName"></input>
+  <button id="userNameEnterBtn">Enter</button>
+  <br/>
+  <div id="content">
+    <button id="publicRoomBtn">Public Room</button>
+    <button id="roomABtn">Private Room A</button>
+    <button id="roomBBtn">Private Room B</button>
+    <h3>Current Room:</h3>
+    <p id="currentRoom">Public</p>
+    <hr/>
+    <h3>Online List:</h3>
+    <ul id="onlineList"></ul>
+    <br/>
+    <hr/>
+    <h3>Typing List:</h3>
+    <ul id="typingList"></ul>
+    <br/>
+    <hr/>
+    <h3>Messages:</h3>
+    <ul id="messages"></ul>
+    <form action="">
+      <input id="m" autocomplete="off" />
+      <button>Send</button>
+    </form>
+  </div>
+</body>
+
+</html>
